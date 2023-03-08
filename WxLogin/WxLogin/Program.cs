@@ -16,6 +16,7 @@ namespace WxLogin
             builder.Services.AddSwaggerGen();
 
             builder.Services.Configure<WXOptions>(builder.Configuration.GetSection("WXOptions"));
+            builder.Services.Configure<JWTOptions>(builder.Configuration.GetSection("JWT"));
 
             builder.Services.AddHttpClient("wx", client =>
             {

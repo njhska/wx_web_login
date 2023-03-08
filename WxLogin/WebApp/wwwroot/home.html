@@ -5,20 +5,17 @@
     <title></title>
 </head>
 <body>
-    <a id="link" href="https://open.weixin.qq.com/connect/qrconnect?appid=wx7311e35a8fdfce68&redirect_uri=https%3A%2F%2F12t4u51040.zicp.fun%2Fapi%2Fauthorize%2Fhttps%253A%252F%252Flocalhost%253A9012%252Fhome%252Findex&response_type=code&scope=snsapi_login&state=3d6be0a4035d839573b04816624a415e#wechat_redirect">
-        login
-    </a>
     <div id="login_container">
 
     </div>
     <script src="http://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js"></script>
     <script>
         var obj = new WxLogin({
-            self_redirect: true,
+            self_redirect: false,
             id: "login_container",
             appid: "wx7311e35a8fdfce68",
             scope: "snsapi_login",
-            redirect_uri: "https%3A%2F%2F12t4u51040.zicp.fun%2Fapi%2Fauthorize",
+            redirect_uri: "https%3A%2F%2F12t4u51040.zicp.fun%2Fapi%2Fauthorize%2Fhttp%253A%252F%252Flocalhost%253A5298%252Fapi%252Fhome%252Findex",
             state: "3d6be0a4035d839573b04816624a415e"
         });
     </script>

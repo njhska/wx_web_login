@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using WxLogin.common;
 using WxLogin.models;
 
 namespace WxLogin.Controllers
@@ -16,19 +18,21 @@ namespace WxLogin.Controllers
         private static readonly string stateCode = "3d6be0a4035d839573b04816624a415e";
         private readonly IHttpClientFactory clientFactory;
         private readonly IOptions<WXOptions> wxOption;
+        private readonly IOptions<JWTOptions> jwtOption;
         private readonly ILogger<AuthorizeController> logger;
 
-        public AuthorizeController(IHttpClientFactory clientFactory,IOptions<WXOptions> wxOption,ILogger<AuthorizeController> logger)
+        public AuthorizeController(IHttpClientFactory clientFactory,IOptions<WXOptions> wxOption,
+            IOptions<JWTOptions> jwtOption,
+            ILogger<AuthorizeController> logger)
         {
             this.clientFactory = clientFactory;
             this.wxOption = wxOption;
+            this.jwtOption = jwtOption;
             this.logger = logger;
         }
         [HttpGet("{topage}")]
         public async Task<IActionResult> Get(string code,string state,string toPage)
-        {
-            var url = WebUtility.UrlDecode(toPage);
-
+        { 
             if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state) || string.IsNullOrEmpty(toPage))
             {
                 logger.LogDebug("get: code or state or topage is empty");
@@ -41,7 +45,7 @@ namespace WxLogin.Controllers
                 return BadRequest("state 不匹配");
             }
 
-            var userToken = await GetUserToken(code);
+            var userToken = await GetUserTokenAsync(code);
 
             if(string.IsNullOrEmpty(userToken.access_token)||string.IsNullOrEmpty(userToken.openid))
             {
@@ -49,13 +53,13 @@ namespace WxLogin.Controllers
                 return NotFound("code 未匹配");
             }
 
-            var userInfo = await GetUserInfo(userToken.access_token,userToken.openid);           
-            
-
-            return Redirect($"{url}?nickname={WebUtility.UrlEncode(userInfo.nickname)}&headimg={WebUtility.UrlEncode(userInfo.headimgurl)}");
+            var userInfo = await GetUserInfoAsync(userToken.access_token,userToken.openid);
+            var url = WebUtility.UrlDecode(toPage);
+            Response.Headers.Add("Authorization", BuildJwtToken(userInfo));
+            return Redirect(url);
         }
 
-        private async Task<UserToken> GetUserToken(string code)
+        private async Task<UserToken> GetUserTokenAsync(string code)
         {
             var httpClient = clientFactory.CreateClient("wx");
             
@@ -64,12 +68,23 @@ namespace WxLogin.Controllers
                     $"oauth2/access_token?appid={wxOption.Value.AppId}&secret={wxOption.Value.AppSecret}&code={code}&grant_type=authorization_code");
             return userToken;
         }
-        private async Task<UserInfo> GetUserInfo(string access_token,string openid)
+        private async Task<UserInfo> GetUserInfoAsync(string access_token,string openid)
         {
             var httpClient = clientFactory.CreateClient("wx");
             var userInfo = await httpClient
                 .GetFromJsonAsync<UserInfo> ($"userinfo?access_token={access_token}&openid={openid}");
             return userInfo;
+        }
+
+        private string BuildJwtToken(UserInfo userInfo)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim("nickname",userInfo.nickname),
+                new Claim("headimg",userInfo.headimgurl),
+                new Claim("openid",userInfo.openid)
+            };
+            return JWTHelper.BuildToken(claims, jwtOption.Value);
         }
     }
 }
