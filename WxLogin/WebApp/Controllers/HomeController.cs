@@ -10,6 +10,7 @@ namespace WebApp.Controllers
     public class HomeController : ControllerBase
     {
         [HttpGet("index")]
+        //filter attribute以这种方式注入 可以在ctor中注入服务
         [ServiceFilter(typeof(AuthenticationFilter))]
         public IActionResult Index(string info)
         {

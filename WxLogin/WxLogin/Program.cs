@@ -19,6 +19,7 @@ namespace WxLogin
             builder.Services.Configure<JWTOptions>(builder.Configuration.GetSection("JWT"));
             builder.Services.Configure<EncryptOption>(builder.Configuration.GetSection("Encrypt"));
 
+            //注入httpclient factory 并加入baseurl
             builder.Services.AddHttpClient("wx", client =>
             {
                 client.BaseAddress = new Uri("https://api.weixin.qq.com/sns/");

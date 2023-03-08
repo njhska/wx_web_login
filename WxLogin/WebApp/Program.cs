@@ -26,6 +26,7 @@ namespace WebApp
                 x.UseNpgsql(constr);
             });
 
+            //filter attribute以这种方式注入 可以在ctor中注入服务
             builder.Services.AddScoped<AuthenticationFilter>();
 
             var app = builder.Build();
