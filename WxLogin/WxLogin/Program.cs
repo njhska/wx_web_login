@@ -17,6 +17,7 @@ namespace WxLogin
 
             builder.Services.Configure<WXOptions>(builder.Configuration.GetSection("WXOptions"));
             builder.Services.Configure<JWTOptions>(builder.Configuration.GetSection("JWT"));
+            builder.Services.Configure<EncryptOption>(builder.Configuration.GetSection("Encrypt"));
 
             builder.Services.AddHttpClient("wx", client =>
             {

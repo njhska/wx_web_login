@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using HT.Core;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Net;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using WxLogin.common;
@@ -19,15 +22,19 @@ namespace WxLogin.Controllers
         private readonly IHttpClientFactory clientFactory;
         private readonly IOptions<WXOptions> wxOption;
         private readonly IOptions<JWTOptions> jwtOption;
+        private readonly IOptions<EncryptOption> encryptOption;
         private readonly ILogger<AuthorizeController> logger;
 
-        public AuthorizeController(IHttpClientFactory clientFactory,IOptions<WXOptions> wxOption,
+        public AuthorizeController(IHttpClientFactory clientFactory,
+            IOptions<WXOptions> wxOption,
             IOptions<JWTOptions> jwtOption,
+            IOptions<EncryptOption> encryptOption,
             ILogger<AuthorizeController> logger)
         {
             this.clientFactory = clientFactory;
             this.wxOption = wxOption;
             this.jwtOption = jwtOption;
+            this.encryptOption = encryptOption;
             this.logger = logger;
         }
         [HttpGet("{topage}")]
@@ -55,8 +62,8 @@ namespace WxLogin.Controllers
 
             var userInfo = await GetUserInfoAsync(userToken.access_token,userToken.openid);
             var url = WebUtility.UrlDecode(toPage);
-            Response.Headers.Add("Authorization", BuildJwtToken(userInfo));
-            return Redirect(url);
+
+            return Redirect($"{url}?info={EncryptUserInfo(userInfo)}");
         }
 
         private async Task<UserToken> GetUserTokenAsync(string code)
@@ -76,12 +83,18 @@ namespace WxLogin.Controllers
             return userInfo;
         }
 
+        private string EncryptUserInfo(UserInfo userInfo)
+        {
+            var str = $"nickname={userInfo.nickname}&headimg={userInfo.headimg}&openid={userInfo.openid}";
+            return str.Encrypt(encryptOption.Value.key);
+        }
+
         private string BuildJwtToken(UserInfo userInfo)
         {
             var claims = new List<Claim>
             {
                 new Claim("nickname",userInfo.nickname),
-                new Claim("headimg",userInfo.headimgurl),
+                new Claim("headimg",userInfo.headimg),
                 new Claim("openid",userInfo.openid)
             };
             return JWTHelper.BuildToken(claims, jwtOption.Value);
