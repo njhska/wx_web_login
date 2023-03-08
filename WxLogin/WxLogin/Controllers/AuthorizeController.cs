@@ -63,7 +63,7 @@ namespace WxLogin.Controllers
             var userInfo = await GetUserInfoAsync(userToken.access_token,userToken.openid);
             var url = WebUtility.UrlDecode(toPage);
 
-            return Redirect($"{url}?info={EncryptUserInfo(userInfo)}");
+            return Redirect($"{url}?info={EncryptUserInfoThenEncode(userInfo)}");
         }
 
         private async Task<UserToken> GetUserTokenAsync(string code)
@@ -83,10 +83,11 @@ namespace WxLogin.Controllers
             return userInfo;
         }
 
-        private string EncryptUserInfo(UserInfo userInfo)
+        private string EncryptUserInfoThenEncode(UserInfo userInfo)
         {
             var str = $"nickname={userInfo.nickname}&headimg={userInfo.headimg}&openid={userInfo.openid}";
-            return str.Encrypt(encryptOption.Value.key);
+            str = str.Encrypt(encryptOption.Value.key);
+            return WebUtility.UrlEncode(str);
         }
 
         private string BuildJwtToken(UserInfo userInfo)

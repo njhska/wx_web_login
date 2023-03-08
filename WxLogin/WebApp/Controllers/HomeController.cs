@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using WebApp.common;
+using WebApp.models;
 
 namespace WebApp.Controllers
 {
@@ -8,9 +10,12 @@ namespace WebApp.Controllers
     public class HomeController : ControllerBase
     {
         [HttpGet("index")]
-        public IActionResult Index()
+        [ServiceFilter(typeof(AuthenticationFilter))]
+        public IActionResult Index(string info)
         {
-            return Ok();
+            HttpContext.Items.TryGetValue("user", out var result);
+
+            return new ContentResult { Content = ((UserInfo)result).nickname };
         }
     }
 }

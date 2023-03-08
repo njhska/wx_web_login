@@ -1,3 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+using WebApp.common;
+using WebApp.Entities;
+using WebApp.models;
+
 namespace WebApp
 {
     public class Program
@@ -12,6 +17,16 @@ namespace WebApp
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.Configure<EncryptOption>(builder.Configuration.GetSection("Encrypt"));
+
+            builder.Services.AddDbContext<NpgsqlContext>(x =>
+            {
+                var constr = builder.Configuration.GetConnectionString("npgsql");
+                x.UseNpgsql(constr);
+            });
+
+            builder.Services.AddScoped<AuthenticationFilter>();
 
             var app = builder.Build();
             app.UseStaticFiles();
