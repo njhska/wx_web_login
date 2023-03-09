@@ -7,7 +7,7 @@ namespace WebApp.models
     {
         public static UserInfo ToUserInfo(this User user)
         {
-            return new UserInfo(user.NickName, user.HeadImg, user.Gender, user.OpenId);
+            return new UserInfo(user.NickName, user.HeadImg, user.Gender, user.OpenId,"somerole");
         }
     }
 }

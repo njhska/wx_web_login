@@ -4,39 +4,41 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using System.Net;
+using System.Text.Json;
 using WebApp.Entities;
 using WebApp.models;
 
 namespace WebApp.common
 {
-    public class AuthenticationFilter: IAsyncActionFilter
+    /// <summary>
+    /// 单一职责，这个只用来做登陆
+    /// </summary>
+    public class AuthenticationFilter : IAsyncActionFilter
     {
         private readonly NpgsqlContext npgsqlContext;
         private readonly ILogger<AuthenticationFilter> logger;
-        private readonly IOptions<EncryptOption> encryptOption;
+        private readonly IConfiguration configuration;
 
         public AuthenticationFilter(NpgsqlContext npgsqlContext,
             ILogger<AuthenticationFilter> logger,
-            IOptions<EncryptOption> encryptOption)
+            IConfiguration configuration)
         {
             this.npgsqlContext = npgsqlContext;
             this.logger = logger;
-            this.encryptOption = encryptOption;
+            this.configuration = configuration;
         }
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             var args = context.ActionArguments;
-            var controller = context.RouteData.Values["Controller"];
-            var action = context.RouteData.Values["Action"];
 
             if (args.ContainsKey("info"))
             {
                 var userInfoArg = args["info"].ToString();
-                var userInfoStr = userInfoArg.Decrypt(encryptOption.Value.key);
-                if("error" == userInfoStr)
+                var userInfoStr = userInfoArg.Decrypt(configuration.GetValue<string>("EncryptKey"));
+                if ("error" == userInfoStr)
                 {
                     //表示通过密钥解析失败 非法登陆
-                    logger.LogWarning($"非法登陆{controller}/{action}");
+                    logger.LogWarning($"非法登陆");
                     context.Result = new BadRequestResult();
                     return;
                 }
@@ -50,7 +52,7 @@ namespace WebApp.common
                     user.LastLoginTime = DateTime.Now;
 
 
-                    if(npgsqlContext.Users.Count(x=>x.OpenId == user.OpenId) == 0)
+                    if (npgsqlContext.Users.Count(x => x.OpenId == user.OpenId) == 0)
                     {
                         //首次登陆
                         logger.LogInformation($"{user.OpenId}首次登陆");
@@ -59,17 +61,18 @@ namespace WebApp.common
                     }
                     else
                     {
-                        var lastLoginTime = npgsqlContext.Users.Where(x=>x.OpenId==user.OpenId).Select(x=>x.LastLoginTime).FirstOrDefault();
-                        if((user.LastLoginTime.Value - user.LastLoginTime.Value).TotalDays >= 7)
+                        var lastLoginTime = npgsqlContext.Users.Where(x => x.OpenId == user.OpenId).Select(x => x.LastLoginTime).FirstOrDefault();
+                        if ((user.LastLoginTime.Value - lastLoginTime.Value).TotalDays >= 7)
                         {
                             logger.LogInformation($"{user.OpenId}信息已过期");
                             var entry = npgsqlContext.Entry(user);
-                            entry.Property(x=>x.NickName).IsModified= true;
-                            entry.Property(x=>x.HeadImg).IsModified= true;
+                            entry.Property(x => x.NickName).IsModified = true;
+                            entry.Property(x => x.HeadImg).IsModified = true;
+                            entry.Property(x => x.LastLoginTime).IsModified = true;
                             await npgsqlContext.SaveChangesAsync();
                         }
                     }
-                    context.HttpContext.Items.Add("user", user.ToUserInfo());
+                    context.HttpContext.Session.SetString(configuration.GetValue<string>("LoginUserSessionKey"), JsonSerializer.Serialize<UserInfo>(user.ToUserInfo()));
                     await next();
                 }
             }
