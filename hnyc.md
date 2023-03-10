@@ -32,7 +32,7 @@
 
 > sort set
 
-- city:id
+- city:id   //id中可以有全省
   - score - userid
 
 ## api
@@ -40,7 +40,7 @@
 ##### 创建用户
 
 ```
-CreateUser(userId,type) return user
+CreateUser(userId,type，city) return user
 ```
 
 ##### 设置头像和姓名
