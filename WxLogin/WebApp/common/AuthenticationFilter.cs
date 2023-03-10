@@ -2,8 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.VisualBasic;
 using StackExchange.Redis;
 using System.Net;
 using System.Text.Json;
@@ -31,6 +31,8 @@ namespace WebApp.common
         }
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
+            var cancellationToken = context.HttpContext.RequestAborted;
+
             var args = context.ActionArguments;
 
             if (args.ContainsKey("info"))
@@ -47,41 +49,55 @@ namespace WebApp.common
                 else
                 {
                     var userinfo = QueryHelpers.ParseQuery(userInfoStr);
-                    var user = new UserInfo(userinfo["nickname"][0], userinfo["headimg"][0],1, userinfo["openid"][0],"somerole",DateTime.Now);
+                    var user = new User();
+                    user.OpenId = userinfo["openid"][0];
+                    user.NickName = userinfo["nickname"][0];
+                    user.HeadImg = userinfo["headimg"][0];
+                    user.LastLoginTime = DateTime.Now;
+
 
                     try
                     {
-                        using ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(configuration.GetConnectionString("redis"));
-                        var userId = $"user:{user.openid}";
-                        IDatabase database = redis.GetDatabase(0);
-                        var userJson = await database.StringGetAsync(userId);
-                        if (string.IsNullOrEmpty(userJson))
+                        if (npgsqlContext.Users.Count(x => x.OpenId == user.OpenId) == 0)
                         {
                             //首次登陆
-                            await database.StringSetAsync(userId, JsonSerializer.Serialize(user));
+                            logger.LogInformation($"{user.OpenId}首次登陆");
+                            await npgsqlContext.Users.AddAsync(user, cancellationToken);
+                            await npgsqlContext.SaveChangesAsync(cancellationToken);
                         }
-                        var userObj = JsonSerializer.Deserialize<UserInfo>(userJson);
-                        if((user.lastvisittime.Value - userObj.lastvisittime.Value).TotalDays >= 7)
+                        else
                         {
-                            await database.StringSetAsync(userId, JsonSerializer.Serialize(user));
+                            var lastLoginTime = npgsqlContext.Users.Where(x => x.OpenId == user.OpenId).Select(x => x.LastLoginTime).FirstOrDefault();
+                            if ((user.LastLoginTime.Value - lastLoginTime.Value).TotalDays >= 7)
+                            {
+                                logger.LogInformation($"{user.OpenId}信息已过期");
+                                var entry = npgsqlContext.Entry(user);
+                                entry.Property(x => x.NickName).IsModified = true;
+                                entry.Property(x => x.HeadImg).IsModified = true;
+                                entry.Property(x => x.LastLoginTime).IsModified = true;
+                                await npgsqlContext.SaveChangesAsync(cancellationToken);
+                            }
                         }
-
-                        context.HttpContext.Session.SetString(configuration.GetValue<string>("LoginUserSessionKey"), database.StringGet(userId));
-                        await next();
                     }
-                    catch(RedisConnectionException)
+                    catch (DbUpdateException ex)
                     {
-                        logger.LogError("redis连接失败");
+                        logger.LogError("数据库更新失败" + ex.Message);
                         throw;
                     }
-                    catch (RedisServerException ex)
+                    catch (OperationCanceledException)
                     {
-                        logger.LogError("redis命令执行失败", ex.Message);
+                        //用户中断了请求
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex.ToString());
-                    } 
+
+                    }
+                    finally 
+                    { 
+                    
+                    }
+                    context.HttpContext.Session.SetString(configuration.GetValue<string>("LoginUserSessionKey"), JsonSerializer.Serialize<UserInfo>(user.ToUserInfo()));
+                    await next();
                 }
             }
             else

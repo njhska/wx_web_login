@@ -31,7 +31,7 @@ namespace WebApp
             builder.Services.AddSession(option =>
             {
                 option.Cookie.Name = "webapp";
-                option.IdleTimeout = TimeSpan.FromSeconds(3600);
+                option.IdleTimeout = TimeSpan.FromSeconds(600);
                 option.Cookie.IsEssential = true;
             });
 

@@ -10,12 +10,20 @@
     </div>
     <script src="http://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js"></script>
     <script>
+        var transit = "http://localhost:5298/api/home/transit/";
+        if (location.search) {
+            var result = /topage=([^&]+)/.exec(location.search);
+            if (result) {
+                transit += encodeURIComponent(result[1]);
+            }
+        }
+        var redirect_uri = "https://12t4u51040.zicp.fun/api/authorize/" + encodeURIComponent(transit);
         var obj = new WxLogin({
             self_redirect: false,
             id: "login_container",
             appid: "wx7311e35a8fdfce68",
             scope: "snsapi_login",
-            redirect_uri: "https%3A%2F%2F12t4u51040.zicp.fun%2Fapi%2Fauthorize%2Fhttp%253A%252F%252Flocalhost%253A5298%252Fapi%252Fhome%252Findex",
+            redirect_uri: encodeURIComponent(redirect_uri),
             state: "3d6be0a4035d839573b04816624a415e"
         });
     </script>
