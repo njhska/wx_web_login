@@ -6,16 +6,19 @@
 
 - user:id
   - name
+  - type //从哪个平台登陆 用于消息推送
   - headimg
   - city
-  - fragment
-  - highest score all time
+  - fragment - 2^n
+  - highest score all time //记录最高分，可以判断用户是否闯过3关
 
 ##### user price表
 
+> hash
+
 - price:userid
-  - price type1 - 数量
-  - price type1 time
+  - price type1 - 数量 //可以有周抽奖类型
+  - price type1 time //用于判断这周抽中多少次了
   - price type2 - 数量
   - price type2 time
 
@@ -37,7 +40,7 @@
 ##### 创建用户
 
 ```
-CreateUser(userId) return user
+CreateUser(userId,type) return user
 ```
 
 ##### 设置头像和姓名
@@ -63,7 +66,7 @@ SaveFragments(userId,fragments)
 ##### 保存积分
 
 ```
-//最高积分保存到user 根据系统重置时间判断是不是本周
+//最高积分保存到user
 //最高积分保存到对应city
 //最高积分保存到city:0 表示全省
 SaveScore(userId,city,score,加密)
@@ -87,6 +90,7 @@ DecrePrice(userId,priceType,加密)
 ##### 设置奖池
 
 ```
+//要把周抽奖预留出来
 SetPrices()
 ```
 
@@ -94,6 +98,6 @@ SetPrices()
 
 - 统计前三
   - 给user price添加数据
-  - 队列消息
+  - 队列消息 根据user type 推送
 - 清除周数据
   - 清空city range表
